@@ -1,21 +1,23 @@
 const express = require('express');
+const multer  = require('multer');
 
 const router = express.Router();
+const upload = multer();
 
 let id = 0;
 let users = {};
 let logs = {};
 
-router.post("/api/users", async function(req, res){
+router.post("/api/users", upload.none(), async function(req, res){
     const { username } = req.body;
 
     id++;
     users[id] = username;
 
-    return res.json({username, _id: id});
+    return res.json({username: username, _id: id.toString()});
 });
 
-router.post("/api/users/:_id/exercises", async function(req, res){
+router.post("/api/users/:_id/exercises", upload.none(), async function(req, res){
     const id = req.params._id;
     const { description, duration, date } = req.body;
 
@@ -34,7 +36,7 @@ router.post("/api/users/:_id/exercises", async function(req, res){
         description,
         duration: Number(duration),
         date: new Date(date).toDateString(),
-        _id: id,
+        _id: id.toString(),
     });
 });
 
@@ -76,7 +78,7 @@ router.get("/api/users/:_id/logs", async function(req, res){
     const data = {
         username: users[id].username,
         count: exercises.length,
-        _id: id,
+        _id: id.toString(),
         log: exercises,
     }
 
