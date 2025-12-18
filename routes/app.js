@@ -1,98 +1,51 @@
 const express = require('express');
 const multer  = require('multer');
+const { addUser, getAllUsers, addExercise, getUserLogs } = require('../database');
 
 const router = express.Router();
 const upload = multer();
 
-let id = 0;
 let users = {};
 let logs = {};
 
 router.get("/api/users", async function(req, res){
-    if (Object.keys(users) == 0){
-        return res.json([]);
+    try {
+        const users = await getAllUsers();
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch users" });
     }
-
-    const allUsers = Object.keys(users).map((userId) => ({username: users[userId], _id:userId.toString()}));
-
-    return res.json(allUsers);
 });
 
 router.post("/api/users", upload.none(), async function(req, res){
     const { username } = req.body;
+    const savedUser = await addUser(username);
 
-    id++;
-    users[id] = username;
-
-    return res.json({username: username, _id: id.toString()});
+    return res.json(savedUser);
 });
 
 router.post("/api/users/:_id/exercises", upload.none(), async function(req, res){
-    const id = req.params._id;
     const { description, duration, date } = req.body;
+    const { _id } = req.params;
 
-    if (!logs[id]) {
-        logs[id] = [];
+    try {
+        const result = await addExercise(_id, description, duration, date);
+        res.json(result);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
     }
-
-    logs[id].push({
-        description,
-        duration: Number(duration),
-        date: new Date(date),
-    });
-
-    return res.json({
-        username: users[id],
-        description,
-        duration: Number(duration),
-        date: new Date(date).toDateString(),
-        _id: id.toString(),
-    });
 });
 
 router.get("/api/users/:_id/logs", async function(req, res){
-    const id = req.params._id;
-    const from = req.query.from;
-    const to = req.query.to;
-    const limit = req.query.limit;
+    const { from, to, limit } = req.query;
+    const { _id } = req.params;
 
-    if(!logs[id]){
-        return res.status(404).json({ message: "user not found" });
+    try {
+        const result = await getUserLogs(_id, from, to, limit);
+        res.json(result);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
     }
-
-    const exercises = logs[id].sort((a, b) => new Date(a.date) - new Date(b.date)).reduce((acc, item) => {
-        let ok = true;
-        if(from && new Date(item.date) < new Date(from)) {
-            ok = false;
-        }
-
-        if(to && new Date(item.date) > new Date(to)) {
-            ok = false;
-        }
-
-        if(limit && acc.length >= Number(limit)){
-            ok = false;
-        }
-
-        if(ok) {
-            acc.push({
-                description: item.description,
-                duration: item.duration,
-                date: new Date(item.date).toDateString(),
-            });
-        }
-
-        return acc;
-    }, []);
-
-    const data = {
-        username: users[id].username,
-        count: exercises.length,
-        _id: id.toString(),
-        log: exercises,
-    }
-
-    return res.json(data);
 });
 
 module.exports = router;
