@@ -8,6 +8,16 @@ let id = 0;
 let users = {};
 let logs = {};
 
+router.get("/api/users", async function(req, res){
+    if (Object.keys(users) == 0){
+        return res.json([]);
+    }
+
+    const allUsers = Object.keys(users).map((userId) => ({username: users[userId], _id:userId.toString()}));
+
+    return res.json(allUsers);
+});
+
 router.post("/api/users", upload.none(), async function(req, res){
     const { username } = req.body;
 
